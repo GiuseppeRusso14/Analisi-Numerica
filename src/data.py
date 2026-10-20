@@ -90,6 +90,29 @@ def standardize(A, mu=None, sigma=None):
     return (A - mu) / sigma, mu, sigma
 
 
+def make_synthetic(m, n, kappa, residual=0.0, seed=0):
+    """Problema sintetico con condizionamento e soluzione noti (solo per i test).
+
+    A = U diag(s) V^T con U, V a colonne ortonormali casuali e valori singolari
+    s logaritmicamente equispaziati tra 1 e 1/kappa, quindi kappa_2(A) = kappa.
+    b = A x_true + r, con r ortogonale a range(A) e ||r|| = residual * ||A x_true||:
+    x_true è la soluzione esatta dei minimi quadrati, qualunque sia residual.
+    Restituisce (A, b, x_true).
+    """
+    rng = np.random.default_rng(seed)
+    U, _ = np.linalg.qr(rng.standard_normal((m, n)))
+    V, _ = np.linalg.qr(rng.standard_normal((n, n)))
+    s = np.logspace(0, -np.log10(kappa), n)
+    A = U @ np.diag(s) @ V.T
+    x_true = rng.standard_normal(n)
+    b = A @ x_true
+    if residual > 0:
+        r = rng.standard_normal(m)
+        r -= U @ (U.T @ r)  # proiezione sul complemento ortogonale di range(A)
+        b += residual * np.linalg.norm(b) / np.linalg.norm(r) * r
+    return A, b, x_true
+
+
 def train_test_split(m, train_frac=0.8, seed=0):
     """Indici di training e di test, scelti a caso con seed fisso."""
     rng = np.random.default_rng(seed)
